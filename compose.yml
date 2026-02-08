@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    container_name: claude-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "7379:6379"
+
+  claude-cache:
+    build: .
+    container_name: claude-cache-server
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_TTL: 86400
+    ports:
+      - "8000:8000"
+
+volumes:
+  redis-data:
