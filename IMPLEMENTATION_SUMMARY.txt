@@ -1,0 +1,129 @@
+================================================================================
+DEBUG LOGGING IMPLEMENTATION - COMPLETE ✅
+================================================================================
+
+OBJECTIVE
+---------
+Add debug logging to the cache server to identify why different cache keys are
+being generated for the same input "hi".
+
+HYPOTHESIS TO TEST
+-------------------
+Two different cache keys for "hi" suggest different x-claude-project header
+values between requests, which affects the cache key formula:
+  cache_key = hash(project_context + ":" + last_user_prompt)
+
+IMPLEMENTATION COMPLETED
+------------------------
+
+1. CACHE KEY GENERATION LOGGING (lines 115-162)
+   ✅ Logs project_context value and length
+   ✅ Logs extracted user text and length  
+   ✅ Logs key material before hashing
+   ✅ Logs final hash generated
+
+   Example output:
+   [CACHE_KEY] Input: project_context='' (len=0)
+   [CACHE_KEY] Extracted user_text: 'hi' (len=2)
+   [CACHE_KEY] Key material: ':hi'
+   [CACHE_KEY] Generated hash: 28c614c9fb372293...
+
+2. CACHE LOOKUP LOGGING (lines 305-352)
+   ✅ Logs x-claude-project header value
+   ✅ Logs full cache key being looked up
+   ✅ Logs cache hit/miss results
+
+   Example output:
+   [REQUEST] x-claude-project header: '' (len=0)
+   [CACHE] Full cache key: claude:resp:28c614c9fb372293...
+   ⚡ Cache hit: claude:resp:28c614c9fb372293...
+
+3. CACHE WRITE LOGGING (lines 443-457)
+   ✅ Logs when cache write occurs
+   ✅ Logs response size and TTL
+   ✅ Logs success confirmation
+
+   Example output:
+   [CACHE_WRITE] Caching response with key: claude:resp:28c614c9fb372293...
+   [CACHE_WRITE] Data size: 1234 bytes, TTL: 86400s
+   ✅ Cached response: claude:resp:28c614c9fb372293...
+
+4. DEBUG ENDPOINTS ADDED (lines 549-603)
+   ✅ GET /debug/cache/keys - List all cache entries with TTL/size/preview
+   ✅ POST /debug/cache/flush - Clear cache (requires ?confirm=yes)
+   ✅ GET /debug/cache/stats - Cache statistics (total keys, memory, uptime)
+
+DEPLOYMENT STATUS
+-----------------
+✅ Code updated: /Users/rmac/Documents/claude_cache/claude_cache_server.py
+✅ Container restarted: docker restart claude-cache-server
+✅ Cache flushed: Clean state with 0 keys
+✅ Debug endpoints verified: All working
+✅ Logging verified: Active and visible
+
+TESTING THE IMPLEMENTATION
+---------------------------
+
+Step 1: Watch logs
+  docker logs claude-cache-server -f | grep -E "\[CACHE|\[REQUEST"
+
+Step 2: Send test requests
+  ANTHROPIC_BASE_URL=http://localhost:8000 claude
+  Type "hi" and observe logs
+
+Step 3: Verify cache contents
+  curl http://localhost:8000/debug/cache/keys | jq .
+
+Step 4: Check for different keys
+  - First "hi" should show "[CACHE_KEY] Generated hash: 28c614c9..."
+  - Second "hi" should show same hash (if project_context is consistent)
+  - If different hashes appear, project_context is the problem
+
+WHAT THE LOGS WILL REVEAL
+--------------------------
+
+If project_context is inconsistent:
+  Request 1: [CACHE_KEY] Input: project_context='' (len=0)
+  Request 2: [CACHE_KEY] Input: project_context='myproject' (len=9)
+  → Different hashes generated → Different cache keys → Cache misses
+
+If user text differs:
+  Request 1: [CACHE_KEY] Extracted user_text: 'hi' (len=2)
+  Request 2: [CACHE_KEY] Extracted user_text: ' hi' (len=3)
+  → Whitespace difference → Different hash
+
+If hash generation fails:
+  [CACHE_KEY] Generated hash: None
+  → No caching will occur
+
+QUICK REFERENCE
+---------------
+
+Monitor cache operations:
+  docker logs claude-cache-server -f | grep "\[CACHE\|⚡\|❌\|✅"
+
+List cache keys:
+  curl http://localhost:8000/debug/cache/keys | jq .
+
+Get cache stats:
+  curl http://localhost:8000/debug/cache/stats | jq .
+
+Flush cache:
+  curl -X POST "http://localhost:8000/debug/cache/flush?confirm=yes"
+
+FILES DOCUMENTATION
+--------------------
+✅ DEBUG_LOGGING_IMPLEMENTATION.md - Detailed implementation guide
+✅ DEBUG_QUICK_START.md - Quick reference for using debug tools
+✅ IMPLEMENTATION_SUMMARY.txt - This file
+
+NEXT STEPS
+----------
+1. Run test with "hi" input while monitoring logs
+2. Observe if cache key changes between requests
+3. If keys differ, check project_context values in logs
+4. If keys are same but getting misses, check Redis connectivity
+5. If all keys are same and getting hits, issue is resolved!
+
+STATUS: Ready for testing ✅
+================================================================================
